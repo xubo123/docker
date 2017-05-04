@@ -112,7 +112,7 @@ ENV PATH /osxcross/target/bin:$PATH
 ENV SECCOMP_VERSION 2.3.1
 RUN set -x \
 	&& export SECCOMP_PATH="$(mktemp -d)" \
-	&& curl -fsSL "https://github.com/seccomp/libseccomp/releases/download/v${SECCOMP_VERSION}/libseccomp-${SECCOMP_VERSION}.tar.gz" \
+	&& curl -fsSL "http://dl.download.csdn.net/down11/20170503/8a3badb96b9f0b001cf5f24313c86c6d.gz?response-content-disposition=attachment%3Bfilename%3D%22libseccomp-2.3.1.tar.gz%22&OSSAccessKeyId=9q6nvzoJGowBj4q1&Expires=1493817797&Signature=TvebOGMMC%2BoqBh0aoQo5hpHkhAI%3D" \
 		| tar -xzC "$SECCOMP_PATH" --strip-components=1 \
 	&& ( \
 		cd "$SECCOMP_PATH" \
