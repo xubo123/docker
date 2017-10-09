@@ -112,7 +112,7 @@ ENV PATH /osxcross/target/bin:$PATH
 ENV SECCOMP_VERSION 2.3.1
 RUN set -x \
 	&& export SECCOMP_PATH="$(mktemp -d)" \
-	&& curl -fsSL "http://dl.download.csdn.net/down11/20170503/8a3badb96b9f0b001cf5f24313c86c6d.gz?response-content-disposition=attachment%3Bfilename%3D%22libseccomp-2.3.1.tar.gz%22&OSSAccessKeyId=9q6nvzoJGowBj4q1&Expires=1493817797&Signature=TvebOGMMC%2BoqBh0aoQo5hpHkhAI%3D" \
+	&& curl -fsSL "https://github.com/seccomp/libseccomp/releases/download/v${SECCOMP_VERSION}/libseccomp-${SECCOMP_VERSION}.tar.gz" \
 		| tar -xzC "$SECCOMP_PATH" --strip-components=1 \
 	&& ( \
 		cd "$SECCOMP_PATH" \
@@ -127,10 +127,11 @@ RUN set -x \
 # IMPORTANT: If the version of Go is updated, the Windows to Linux CI machines
 #            will need updating, to avoid errors. Ping #docker-maintainers on IRC
 #            with a heads-up.
-ENV GO_VERSION 1.7.5
-RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" \
-	| tar -xzC /usr/local
+ENV GO_VERSION 1.7.6
 
+RUN curl -fsSL "https://www.golangtc.com/static/go/${GO_VERSION}/go${GO_VERSION}.linux-amd64.tar.gz" \
+	| tar -xzC /usr/local
+ 
 ENV PATH /go/bin:/usr/local/go/bin:$PATH
 ENV GOPATH /go
 
@@ -225,21 +226,16 @@ RUN echo "source $PWD/hack/make/.integration-test-helpers" >> /etc/bash.bashrc
 # Register Docker's bash completion.
 RUN ln -sv $PWD/contrib/completion/bash/docker /etc/bash_completion.d/docker
 
-# Get useful and necessary Hub images so we can "docker load" locally instead of pulling
-COPY contrib/download-frozen-image-v2.sh /go/src/github.com/docker/docker/contrib/
-RUN ./contrib/download-frozen-image-v2.sh /docker-frozen-images \
-	buildpack-deps:jessie@sha256:25785f89240fbcdd8a74bdaf30dd5599a9523882c6dfc567f2e9ef7cf6f79db6 \
-	busybox:latest@sha256:e4f93f6ed15a0cdd342f5aae387886fba0ab98af0a102da6276eaf24d6e6ade0 \
-	debian:jessie@sha256:f968f10b4b523737e253a97eac59b0d1420b5c19b69928d35801a6373ffe330e \
-	hello-world:latest@sha256:8be990ef2aeb16dbcb9271ddfe2610fa6658d13f6dfb8bc72074cc1ca36966a7
+# Get useful and necessary Hub images so we can "docker load" locally instead of pulling 
 # See also "hack/make/.ensure-frozen-images" (which needs to be updated any time this list is)
 
 # Install tomlv, vndr, runc, containerd, tini, docker-proxy
 # Please edit hack/dockerfile/install-binaries.sh to update them.
 COPY hack/dockerfile/binaries-commits /tmp/binaries-commits
 COPY hack/dockerfile/install-binaries.sh /tmp/install-binaries.sh
+COPY mergeCode/containerd /tmp/containerd/
+COPY mergeCode/runc /tmp/runc
 RUN /tmp/install-binaries.sh tomlv vndr runc containerd tini proxy bindata
-
 # Wrap all commands in the "docker-in-docker" script to allow nested containers
 ENTRYPOINT ["hack/dind"]
 

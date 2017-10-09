@@ -138,6 +138,7 @@ func (daemon *Daemon) restore() error {
 
 	for _, v := range dir {
 		id := v.Name()
+                logrus.Debugf("container_id:%s",v.Name())
 		container, err := daemon.load(id)
 		if err != nil {
 			logrus.Errorf("Failed to load container %v: %v", id, err)
@@ -853,6 +854,7 @@ func (daemon *Daemon) Mount(container *container.Container) error {
 		return err
 	}
 	logrus.Debugf("container mounted via layerStore: %v", dir)
+        logrus.Debugf("container.BaseFS:%s  dir:%s ",container.BaseFS, dir)
 
 	if container.BaseFS != dir {
 		// The mount path reported by the graph driver should always be trusted on Windows, since the

@@ -63,6 +63,7 @@ func NewStoreFromOptions(options StoreOptions) (Store, error) {
 	logrus.Debugf("Using graph driver %s", driver)
 
 	fms, err := NewFSMetadataStore(fmt.Sprintf(options.MetadataStorePathTemplate, driver))
+        logrus.Debugf("MetaDataPath:========= %s",options.MetadataStorePathTemplate) 
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +106,18 @@ func NewStoreFromGraphDriver(store MetadataStore, driver graphdriver.Driver) (St
 
 	return ls, nil
 }
+//Code added by xb
+func (ls *layerStore) LoadLayer(layer ChainID) (error) {
+	l ,err := ls.loadLayer(layer)
+	if err != nil{
+		logrus.Debugf("Failed to load layer %s:%s",layer,err)
+	}
+	if l.parent != nil{
+	   l.parent.referenceCount++
+	}
+	return err
 
+}
 func (ls *layerStore) loadLayer(layer ChainID) (*roLayer, error) {
 	cl, ok := ls.layerMap[layer]
 	if ok {
@@ -159,8 +171,12 @@ func (ls *layerStore) loadLayer(layer ChainID) (*roLayer, error) {
 
 	return cl, nil
 }
-
+//Code added by xb
+func (ls *layerStore) LoadMount(mount string) error {
+	return ls.loadMount(mount)
+}
 func (ls *layerStore) loadMount(mount string) error {
+        logrus.Debugf("loadMount:=========== %s",mount)
 	if _, ok := ls.mounts[mount]; ok {
 		return nil
 	}
@@ -169,7 +185,7 @@ func (ls *layerStore) loadMount(mount string) error {
 	if err != nil {
 		return err
 	}
-
+        logrus.Debugf("mountID:========= %s",mountID)
 	initID, err := ls.store.GetInitID(mount)
 	if err != nil {
 		return err
@@ -374,15 +390,18 @@ func (ls *layerStore) Map() map[ChainID]Layer {
 }
 
 func (ls *layerStore) deleteLayer(layer *roLayer, metadata *Metadata) error {
+	logrus.Debugf("MetaData : %+v",metadata)
+	logrus.Debugf("Will Remove rolayer : %s",layer.cacheID)
 	err := ls.driver.Remove(layer.cacheID)
 	if err != nil {
 		return err
 	}
-
+    logrus.Debugf("Will Remove rolayer chainID : %s",layer.chainID)
 	err = ls.store.Remove(layer.chainID)
 	if err != nil {
 		return err
 	}
+	logrus.Debugf("Succeed to Remove rolayer chainID : %s",layer.chainID)
 	metadata.DiffID = layer.diffID
 	metadata.ChainID = layer.chainID
 	metadata.Size, err = layer.Size()
@@ -554,13 +573,13 @@ func (ls *layerStore) ReleaseRWLayer(l RWLayer) ([]Metadata, error) {
 	if m.hasReferences() {
 		return []Metadata{}, nil
 	}
-
+    logrus.Debugf("Will Remove mountID : %s",m.mountID)
 	if err := ls.driver.Remove(m.mountID); err != nil {
 		logrus.Errorf("Error removing mounted layer %s: %s", m.name, err)
 		m.retakeReference(l)
 		return nil, err
 	}
-
+    logrus.Debugf("Will Remove initID : %s",m.initID)
 	if m.initID != "" {
 		if err := ls.driver.Remove(m.initID); err != nil {
 			logrus.Errorf("Error removing init layer %s: %s", m.name, err)

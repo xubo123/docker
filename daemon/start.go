@@ -7,6 +7,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"io/ioutil" 
+	"path/filepath"
+	"os"
 
 	"google.golang.org/grpc"
 
@@ -15,8 +18,15 @@ import (
 	"github.com/docker/docker/api/types"
 	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/container"
+	"github.com/opencontainers/go-digest"
+	layer "github.com/docker/docker/layer"
+	httputils "github.com/docker/docker/api/server/httputils"
 )
-
+var supportedAlg = []digest.Algorithm{
+		digest.SHA256,
+		// digest.SHA384, // Currently not used
+		// digest.SHA512, // Currently not used
+	}
 // ContainerStart starts a container.
 func (daemon *Daemon) ContainerStart(name string, hostConfig *containertypes.HostConfig, checkpoint string, checkpointDir string) error {
 	if checkpoint != "" && !daemon.HasExperimental() {
@@ -25,9 +35,109 @@ func (daemon *Daemon) ContainerStart(name string, hostConfig *containertypes.Hos
 
 	container, err := daemon.GetContainer(name)
 	if err != nil {
-		return err
-	}
+		if httputils.GetHTTPErrorStatusCode(err) == http.StatusNotFound{
+			    dir,rd_err := ioutil.ReadDir(daemon.repository)
+				if rd_err != nil{
+					return rd_err
+				}
+	            var full_ct_id = ""
+	            for _,v := range dir {
+                    id := v.Name()
+	            	logrus.Debugf("container_id:%s",v.Name()) 
+		            if strings.Contains(id,name){
+                       full_ct_id = id
+	            	   break
+	            	}
 
+	            }
+                if full_ct_id == ""{
+					return err
+				}
+				logrus.Debugf("full_ct_id:%s",full_ct_id)
+                //Get Container's diff-ids
+	            diff_ids := []string{}
+				layerdb_root := filepath.Join(daemon.root,"image",daemon.layerStore.DriverName(),"layerdb")
+                for _,algorithm := range supportedAlg{
+	           	    parent_path := filepath.Join(layerdb_root,"mounts",full_ct_id,"parent")
+		            for err = nil;err == nil;_,err = os.Stat(parent_path){
+		              f,err := os.Open(parent_path)
+		              defer f.Close()
+		              if err != nil{
+                         return err
+		              }
+		              parent_id,_ := ioutil.ReadAll(f)
+					  parent_id = parent_id[7:]
+		              diff_ids = append(diff_ids,string(parent_id))
+		              parent_path = filepath.Join(layerdb_root,string(algorithm),string(parent_id),"parent")
+
+		            }
+	            } 
+	            //Load LayerStore
+	            for _,diff_id := range diff_ids{
+					logrus.Debugf("Load LayerStore diff_id:%s",diff_id)
+					var diff_chainID layer.ChainID
+					for _,algorithm := range supportedAlg{
+					  dgst := digest.NewDigestFromHex(string(algorithm),diff_id)
+					  if err := dgst.Validate();err != nil{
+						  logrus.Debugf("Ignoring digest %s :%s ",algorithm,diff_id)
+					  }else{
+						  diff_chainID = layer.ChainID(dgst)
+					  }
+					}
+                      daemon.layerStore.LoadLayer(diff_chainID)
+	            }
+                // Load RWLayer mounts
+				logrus.Debugf("Load RWLayer!")
+	            daemon.layerStore.LoadMount(full_ct_id)
+
+	            //Load Container
+	            rst_container,err := daemon.load(full_ct_id)
+                if err != nil{
+	            	logrus.Errorf("Failed to load container %v :%v",full_ct_id,err)
+	            }
+				logrus.Debugf("Succeed to load container %v",full_ct_id)
+	            currentDriver := daemon.GraphDriverName()
+	            if(rst_container.Driver == "" && currentDriver == "aufs" || rst_container.Driver == currentDriver ){
+	               rwlayer,err := daemon.layerStore.GetRWLayer(rst_container.ID)
+	               if err != nil{
+		               logrus.Errorf("Failed to load RWLayer mounts %v:%v",full_ct_id,err)
+	               } 
+	               rst_container.RWLayer = rwlayer
+	               logrus.Debugf("Loaded container mounts %v",rst_container.ID)
+	            }else{
+		            logrus.Debugf("Cannot load container %s because it was created with another graph driver that cannot match current graph driver",rst_container.ID)
+	            }
+
+	            if err := daemon.registerName(rst_container);err != nil{
+                    logrus.Debugf("Failed to register container %s :%s",rst_container.ID,err)
+	            }
+	            daemon.Register(rst_container)
+				logrus.Debugf("Succeed to Register container %v",rst_container.ID)
+	            if err := daemon.verifyVolumesInfo(rst_container);err != nil{
+                    logrus.Errorf("Failed to verify volumes for container '%s':%v",rst_container.ID,err)
+	            }
+	            if rst_container.HostConfig.LogConfig.Type == ""{
+		            if err := daemon.mergeAndVerifyLogConfig(&rst_container.HostConfig.LogConfig);err != nil {
+		            	logrus.Errorf("Failed to verify log config for container %s :%q",rst_container.ID,err)
+		            }
+	            }	
+				container, err = daemon.GetContainer(name)
+				if err != nil {
+					return err
+				}
+				logrus.Debugf("Succeed to Get rst_container %v",container.ID)
+                if checkpoint != "" || checkpointDir!= "" {
+                   daemon.Unmount(container)
+                }
+				logrus.Debugf("Succeed to Unmount container %v",container.ID)
+
+	    }else{
+             return err
+		}
+	            	
+	}
+    logrus.Debugf("Succeed to Get container %v",container.ID)
+	logrus.Debugf("container info Removal :%s ,Dead : %s",container.RemovalInProgress,container.Dead)   
 	if container.IsPaused() {
 		return fmt.Errorf("Cannot start a paused container, try unpause instead.")
 	}
@@ -82,7 +192,6 @@ func (daemon *Daemon) ContainerStart(name string, hostConfig *containertypes.Hos
 			return err
 		}
 	}
-
 	return daemon.containerStart(container, checkpoint, checkpointDir, true)
 }
 

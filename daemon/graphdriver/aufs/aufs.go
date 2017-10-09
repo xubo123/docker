@@ -310,10 +310,14 @@ func (a *Driver) Remove(id string) error {
 	a.locker.Lock(id)
 	defer a.locker.Unlock(id)
 	a.pathCacheLock.Lock()
+	logrus.Debugf("Start Remove layer:%s",id)
 	mountpoint, exists := a.pathCache[id]
+	logrus.Debugf("Get mountpoint from pathcache:%s",mountpoint)
 	a.pathCacheLock.Unlock()
 	if !exists {
 		mountpoint = a.getMountpoint(id)
+		logrus.Debugf("Get mountpoint from getMountpoint:%s",mountpoint)
+
 	}
 
 	var retries int
@@ -325,7 +329,7 @@ func (a *Driver) Remove(id string) error {
 		if !mounted {
 			break
 		}
-
+        logrus.Debugf("mounted mountpoint successfully:%s",mountpoint)
 		if err := a.unmount(mountpoint); err != nil {
 			if err != syscall.EBUSY {
 				return fmt.Errorf("aufs: unmount error: %s: %v", mountpoint, err)
@@ -343,6 +347,7 @@ func (a *Driver) Remove(id string) error {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
+		logrus.Debugf("unmount mountpoint successfully:%s",mountpoint)
 		break
 	}
 
@@ -369,10 +374,11 @@ func (a *Driver) Remove(id string) error {
 	defer os.RemoveAll(tmpDiffpath)
 
 	// Remove the layers file for the id
+	logrus.Debugf("Will Remove path:%s",path.Join(a.rootPath(), "layers", id))
 	if err := os.Remove(path.Join(a.rootPath(), "layers", id)); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-
+    logrus.Debugf("Successfully Remove path")
 	a.pathCacheLock.Lock()
 	delete(a.pathCache, id)
 	a.pathCacheLock.Unlock()
@@ -392,7 +398,7 @@ func (a *Driver) Get(id, mountLabel string) (string, error) {
 	a.pathCacheLock.Lock()
 	m, exists := a.pathCache[id]
 	a.pathCacheLock.Unlock()
-
+        logrus.Debugf("pathCache:============  %v",a.pathCache)
 	if !exists {
 		m = a.getDiffPath(id)
 		if len(parents) > 0 {
