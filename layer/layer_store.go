@@ -95,6 +95,7 @@ func NewStoreFromGraphDriver(store MetadataStore, driver graphdriver.Driver) (St
 		}
 		if l.parent != nil {
 			l.parent.referenceCount++
+                        logrus.Debugf("NewStoreFromGraphDriver---->Layer cacheID : %s,layer.referenceCount:%d",l.parent.cacheID,l.parent.referenceCount)
 		}
 	}
 
@@ -114,6 +115,7 @@ func (ls *layerStore) LoadLayer(layer ChainID) (error) {
 	}
 	if l.parent != nil{
 	   l.parent.referenceCount++
+           logrus.Debugf("LoadLayer---->Layer cacheID : %s,layer.referenceCount:%d",l.parent.cacheID,l.parent.referenceCount)
 	}
 	return err
 
@@ -212,6 +214,7 @@ func (ls *layerStore) loadMount(mount string) error {
 		ml.parent = p
 
 		p.referenceCount++
+                logrus.Debugf("loadMount---->Layer cacheID : %s,layer.referenceCount:%d",p.cacheID,p.referenceCount)
 	}
 
 	ls.mounts[ml.name] = ml
