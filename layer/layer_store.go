@@ -603,7 +603,7 @@ func (ls *layerStore) ReleaseRWLayer(l RWLayer) ([]Metadata, error) {
 	ls.layerL.Lock()
 	defer ls.layerL.Unlock()
 	if m.parent != nil {
-	       logrus.Debugf("mountpoint.parent is not null")	
+	       logrus.Debugf("mountpoint.parent is not null,and parent.cacheid:%s,parent.referenceCount:%d",m.parent.cacheID,m.parent.referenceCount)	
                return ls.releaseLayer(m.parent)
 	}
 
