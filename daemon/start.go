@@ -21,6 +21,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	layer "github.com/docker/docker/layer"
 	httputils "github.com/docker/docker/api/server/httputils"
+	volumedrivers "github.com/docker/docker/volume/drivers"
 )
 var supportedAlg = []digest.Algorithm{
 		digest.SHA256,
@@ -121,6 +122,21 @@ func (daemon *Daemon) ContainerStart(name string, hostConfig *containertypes.Hos
 		            	logrus.Errorf("Failed to verify log config for container %s :%q",rst_container.ID,err)
 		            }
 	            }	
+
+                logrus.Debugf("restored container.MountPoints:%v",rst_container.MountPoints)
+				//Register Volume : configure driver(local/other)
+				for _,volume := range rst_container.MountPoints{
+					logrus.Debugf("Start Get Volume Driver")
+                    vd,err := volumedrivers.GetDriver(volume.Driver)
+					if err != nil{
+						return fmt.Errorf("can't retrieve local volume :%v",err)
+					}
+					logrus.Debugf("Start add Volume:%s",volume.Name)
+				    vd.Add(volume.Name,nil)
+					daemon.volumes.CreateWithRef(volume.Name,volume.Driver,rst_container.ID,nil,nil)
+				}
+
+
 				container, err = daemon.GetContainer(name)
 				if err != nil {
 					return err

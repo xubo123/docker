@@ -376,7 +376,7 @@ func (s *VolumeStore) create(name, driverName string, opts, labels map[string]st
 	if !valid {
 		return nil, &OpErr{Err: errInvalidName, Name: name, Op: "create"}
 	}
-
+    logrus.Debugf("Check Conflict!")
 	v, err := s.checkConflict(name, driverName)
 	if err != nil {
 		return nil, err
@@ -385,7 +385,7 @@ func (s *VolumeStore) create(name, driverName string, opts, labels map[string]st
 	if v != nil {
 		return v, nil
 	}
-
+    logrus.Debugf("No Conflict!")   
 	// Since there isn't a specified driver name, let's see if any of the existing drivers have this volume name
 	if driverName == "" {
 		v, _ := s.getVolume(name)
@@ -399,12 +399,13 @@ func (s *VolumeStore) create(name, driverName string, opts, labels map[string]st
 	if err != nil {
 		return nil, &OpErr{Op: "create", Name: name, Err: err}
 	}
-
+    logrus.Debugf("Check Driver whether exist the volume!")
 	logrus.Debugf("Registering new volume reference: driver %q, name %q", vd.Name(), name)
 
 	if v, _ := vd.Get(name); v != nil {
 		return v, nil
 	}
+	logrus.Debugf("it seems doesn't exist in Driver!")
 	v, err = vd.Create(name, opts)
 	if err != nil {
 		return nil, err
@@ -421,10 +422,11 @@ func (s *VolumeStore) create(name, driverName string, opts, labels map[string]st
 		Labels:  labels,
 		Options: opts,
 	}
-
+    logrus.Debugf("add data to metadata.db ! name:%s , metadata :%v",name,metadata)
 	if err := s.setMeta(name, metadata); err != nil {
 		return nil, err
 	}
+	logrus.Debugf("Successfully add volume metadata to metadata.db!!")
 	return volumeWrapper{v, labels, vd.Scope(), opts}, nil
 }
 

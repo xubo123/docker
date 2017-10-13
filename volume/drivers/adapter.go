@@ -36,6 +36,10 @@ func (a *volumeDriverAdapter) Create(name string, opts map[string]string) (volum
 	}, nil
 }
 
+func (a *volumeDriverAdapter) Add(name string, opts map[string]string) (error) {
+	return nil
+}
+
 func (a *volumeDriverAdapter) Remove(v volume.Volume) error {
 	return a.proxy.Remove(v.Name())
 }

@@ -205,6 +205,47 @@ func (r *Root) Create(name string, opts map[string]string) (volume.Volume, error
 	return v, nil
 }
 
+func (r *Root) Add(name string,opts map[string]string) (error) {
+	if err := r.validateName(name); err != nil {
+		return  err
+	}
+
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	v, exists := r.volumes[name]
+	if exists {
+		return errors.New("volumeName has existed")
+	}
+
+	path := r.DataPath(name)
+
+    v = &localVolume{
+		driverName: r.Name(),
+		name:       name,
+		path:       path,
+	}
+    var err error
+
+	if len(opts) != 0 {
+		if err = setOpts(v, opts); err != nil {
+			return  err
+		}
+		var b []byte
+		b, err = json.Marshal(v.opts)
+		if err != nil {
+			return  err
+		}
+		if err = ioutil.WriteFile(filepath.Join(filepath.Dir(path), "opts.json"), b, 600); err != nil {
+			return errors.Wrap(err, "error while persisting volume options")
+		}
+	}
+
+	r.volumes[name] = v
+	return nil
+}
+
+
 // Remove removes the specified volume and all underlying data. If the
 // given volume does not belong to this driver and an error is
 // returned. The volume is reference counted, if all references are

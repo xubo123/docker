@@ -27,6 +27,8 @@ const (
 
 // Driver is for creating and removing volumes.
 type Driver interface {
+	//Add existed volume to driver (migration~)
+	Add(name string,opts map[string]string)(err error)
 	// Name returns the name of the volume driver.
 	Name() string
 	// Create makes a new volume with the given name.

@@ -417,6 +417,7 @@ func (ls *layerStore) releaseLayer(l *roLayer) ([]Metadata, error) {
 	depth := 0
 	removed := []Metadata{}
 	for {
+        logrus.Debugf("l.referenceCount:%d",l.referenceCount)
 		if l.referenceCount == 0 {
 			panic("layer not retained")
 		}
@@ -599,7 +600,8 @@ func (ls *layerStore) ReleaseRWLayer(l RWLayer) ([]Metadata, error) {
 	ls.layerL.Lock()
 	defer ls.layerL.Unlock()
 	if m.parent != nil {
-		return ls.releaseLayer(m.parent)
+	       logrus.Debugf("mountpoint.parent is not null")	
+               return ls.releaseLayer(m.parent)
 	}
 
 	return []Metadata{}, nil
