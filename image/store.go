@@ -16,6 +16,7 @@ import (
 type Store interface {
 	Create(config []byte) (ID, error)
 	Get(id ID) (*Image, error)
+	Add(id ID) (error)
 	Delete(id ID) ([]layer.Metadata, error)
 	Search(partialID string) (ID, error)
 	SetParent(id ID, parent ID) error
@@ -101,6 +102,39 @@ func (is *store) restore() error {
 		}
 	}
 
+	return nil
+}
+func (is *store) Add(id ID) error{
+	err := is.fs.AddImageMeta(func (dgst digest.Digest) error{
+		img,err := is.Get(IDFromDigest(dgst))
+		if err !=nil{
+			logrus.Errorf("invalid image %v, %v", dgst, err)
+			return nil
+		}
+		var l layer.Layer
+		if chainID := img.RootFS.ChainID(); chainID != "" {
+			l, err = is.ls.Get(chainID)
+			if err != nil {
+				return err
+			}
+		}
+		if err := is.digestSet.Add(dgst); err != nil {
+			return err
+		}
+
+		imageMeta := &imageMeta{
+			layer:    l,
+			children: make(map[ID]struct{}),
+		}
+
+		is.images[IDFromDigest(dgst)] = imageMeta
+
+		return nil
+
+	},id)
+	if err != nil{
+		return err
+	}
 	return nil
 }
 

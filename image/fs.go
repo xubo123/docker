@@ -21,6 +21,7 @@ type StoreBackend interface {
 	Get(id digest.Digest) ([]byte, error)
 	Set(data []byte) (digest.Digest, error)
 	Delete(id digest.Digest) error
+	AddImageMeta(f DigestWalkFunc,id ID) error
 	SetMetadata(id digest.Digest, key string, data []byte) error
 	GetMetadata(id digest.Digest, key string) ([]byte, error)
 	DeleteMetadata(id digest.Digest, key string) error
@@ -85,6 +86,25 @@ func (s *fs) Walk(f DigestWalkFunc) error {
 	return nil
 }
 
+func (s *fs) AddImageMeta(f DigestWalkFunc,id ID) error{
+	s.RLock()
+	_, err := ioutil.ReadDir(filepath.Join(s.root,contentDirName,string(digest.Canonical)))
+	s.RUnlock()
+	if err != nil{
+		return err
+	}
+	dgst :=digest.NewDigestFromHex(string(digest.Canonical),string(id))
+	if err := dgst.Validate();err != nil{
+		logrus.Debugf(" invalid digest %s: %s", dgst, err)
+		return err
+	}
+	if err := f(dgst);err != nil{
+        return err
+
+	}
+	return nil
+
+}
 // Get returns the content stored under a given digest.
 func (s *fs) Get(dgst digest.Digest) ([]byte, error) {
 	s.RLock()
