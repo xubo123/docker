@@ -64,13 +64,16 @@ func NewImageStore(fs StoreBackend, ls LayerGetReleaser) (Store, error) {
 func (is *store) restore() error {
 	err := is.fs.Walk(func(dgst digest.Digest) error {
 		img, err := is.Get(IDFromDigest(dgst))
+		logrus.Debugf("restore imageID:%v",dgst)
 		if err != nil {
 			logrus.Errorf("invalid image %v, %v", dgst, err)
 			return nil
 		}
 		var l layer.Layer
 		if chainID := img.RootFS.ChainID(); chainID != "" {
+		        logrus.Debugf("image/store.go/restore---->chainID:%s",chainID)
 			l, err = is.ls.Get(chainID)
+                        logrus.Debugf("image/store.go/restore---->layer.diffID:%s",l.DiffID())
 			if err != nil {
 				return err
 			}
