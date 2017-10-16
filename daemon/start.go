@@ -20,6 +20,7 @@ import (
 	"github.com/docker/docker/container"
 	"github.com/opencontainers/go-digest"
 	layer "github.com/docker/docker/layer"
+	image "github.com/docker/docker/image"
 	httputils "github.com/docker/docker/api/server/httputils"
 	volumedrivers "github.com/docker/docker/volume/drivers"
 )
@@ -90,13 +91,27 @@ func (daemon *Daemon) ContainerStart(name string, hostConfig *containertypes.Hos
                 // Load RWLayer mounts
 				logrus.Debugf("Load RWLayer!")
 	            daemon.layerStore.LoadMount(full_ct_id)
-
+                
 	            //Load Container
 	            rst_container,err := daemon.load(full_ct_id)
+
                 if err != nil{
 	            	logrus.Errorf("Failed to load container %v :%v",full_ct_id,err)
 	            }
 				logrus.Debugf("Succeed to load container %v",full_ct_id)
+
+                //Load ImageStore
+				logrus.Debugf("Load ImageStore!")
+                image_digest :=string(rst_container.ImageID)
+				image_id := image.ID(image_digest[(strings.Index(image_digest,":")+1):])
+				logrus.Debugf("Load ImageStore : %s",image_id)
+                img_err := daemon.imageStore.Add(image_id)
+                if img_err != nil{
+	            	logrus.Errorf("Failed to load ImageStore %v :%v",image_id,img_err)
+	            }
+				logrus.Debugf("Succeed to load ImageStore %v",image_id)
+
+                //Register container
 	            currentDriver := daemon.GraphDriverName()
 	            if(rst_container.Driver == "" && currentDriver == "aufs" || rst_container.Driver == currentDriver ){
 	               rwlayer,err := daemon.layerStore.GetRWLayer(rst_container.ID)
