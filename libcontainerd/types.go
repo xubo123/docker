@@ -47,7 +47,7 @@ type Client interface {
 	GetPidsForContainer(containerID string) ([]int, error)
 	Summary(containerID string) ([]Summary, error)
 	UpdateResources(containerID string, resources Resources) error
-	CreateCheckpoint(containerID string, checkpointID string, checkpointDir string, exit bool) error
+	CreateCheckpoint(containerID string, checkpointID string, checkpointDir string,preDump bool,parentPath string, exit bool) error
 	DeleteCheckpoint(containerID string, checkpointID string, checkpointDir string) error
 	ListCheckpoints(containerID string, checkpointDir string) (*Checkpoints, error)
 }

@@ -654,6 +654,8 @@ type Checkpoint struct {
 	UnixSockets bool     `protobuf:"varint,4,opt,name=unixSockets" json:"unixSockets,omitempty"`
 	Shell       bool     `protobuf:"varint,5,opt,name=shell" json:"shell,omitempty"`
 	EmptyNS     []string `protobuf:"bytes,6,rep,name=emptyNS" json:"emptyNS,omitempty"`
+	PreDump     bool     `protobuf:"varint,7,opt,name=preDump" json:"preDump,omitempty"`
+	ParentPath  string   `protobuf:"bytes,8,opt,name=parentPath" json:"parentPath,omitempty"`
 }
 
 func (m *Checkpoint) Reset()                    { *m = Checkpoint{} }

@@ -38,7 +38,7 @@ func (daemon *Daemon) CheckpointCreate(name string, config types.CheckpointCreat
 		return fmt.Errorf("Invalid checkpoint ID (%s), only %s are allowed", config.CheckpointID, validCheckpointNameChars)
 	}
 
-	err = daemon.containerd.CreateCheckpoint(container.ID, config.CheckpointID, checkpointDir, config.Exit)
+	err = daemon.containerd.CreateCheckpoint(container.ID, config.CheckpointID, checkpointDir, config.PreDump, config.ParentPath,config.Exit)
 	if err != nil {
 		return fmt.Errorf("Cannot checkpoint container %s: %s", name, err)
 	}

@@ -550,7 +550,7 @@ func (clnt *client) Restore(containerID string, attachStdio StdioCallback, optio
 	return clnt.setExited(containerID, uint32(255))
 }
 
-func (clnt *client) CreateCheckpoint(containerID string, checkpointID string, checkpointDir string, exit bool) error {
+func (clnt *client) CreateCheckpoint(containerID string, checkpointID string, checkpointDir string,preDump bool,parentPath string, exit bool) error {
 	clnt.lock(containerID)
 	defer clnt.unlock(containerID)
 	if _, err := clnt.getContainer(containerID); err != nil {
@@ -561,6 +561,8 @@ func (clnt *client) CreateCheckpoint(containerID string, checkpointID string, ch
 		Id: containerID,
 		Checkpoint: &containerd.Checkpoint{
 			Name:        checkpointID,
+			PreDump:     preDump,
+			ParentPath:  parentPath,
 			Exit:        exit,
 			Tcp:         true,
 			UnixSockets: true,
